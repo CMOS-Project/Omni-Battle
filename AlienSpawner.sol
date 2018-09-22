@@ -15,6 +15,7 @@ contract CreateCoreBase is interest, safemath {
     uint RegenRate;
     uint interest;
     uint value;
+    uint levels;
     string Aliens;
     uint AlienCount;
     uint LossCounter;
@@ -25,11 +26,11 @@ CoreBase[] Core;
 
 mapping (address => uint) CoreBaseOwner; ///#DEV Find which CoreBase Id belongs to corresponding ETH address
 
-function GenerateCoreBase(_hp, _RegenRate, _interest, _value, _AlienCount, _LossCounter, _WinCounter) private {
+function GenerateCoreBase(_hp, _RegenRate, _interest, _value, _AlienCount, _levels, _LossCounter, _WinCounter) private {
     address owner = msg.sender;
     require(balanceOf(msg.sender) < 1 );
     CoreBase.AlienCount = balanceOf(msg.sender);
-    uint CoreId = CoreBase.push(Core(100, 1 days, 0, 0, Aliens[],  _AlienCount, 0, 0) - 1);
+    uint CoreId = CoreBase.push(Core(100, now + 1 days, 0, 0, 0, Aliens[],  _AlienCount, 0, 0) - 1);
     CoreBaseOwner(_CoreId);
     GenerateCore(_hp, _value, _Core);
 }
@@ -207,6 +208,8 @@ contract weapons is AlienSpawner, CreateCoreBase {
     uint Combos = 16;
     uint Total = 16 ** Combos;
 
+    mapping(address => uint) WeaponAssign;
+
     struct weapons {
         uint attack;
         uint occupied;
@@ -216,9 +219,10 @@ contract weapons is AlienSpawner, CreateCoreBase {
     weapons[] Weapons;
 
     function CreateWeapons() internal {
-       require(CheckAlienIdBase = true);
+       require(CheckAlienIdBase() = true);
        uint weaponId = weapons.push(Weapons(_attack, _occupied));
        WeaponCreation(_weaponId, _attack);
+       WeaponAssign(_weaponId);
     }
 
     function CheckWeaponsPresent() internal view returns (bool) {
@@ -231,9 +235,9 @@ contract weapons is AlienSpawner, CreateCoreBase {
         }
     }
 
-    function AssignWeapons(_AlienId) internal {
+    function AssignWeapons(_AlienId, _weaponId) internal {
         require(CheckAlienIdBase() = true);
-        require(msg.sender == OwnerOf(_tokenId));
+        require(msg.sender == OwnerOf(_alienId));
         require(msg.sender == OwnerOf(_weaponId));
         require(AlienType.level > 1);
         require(CheckWeaponsPresent() = false);
