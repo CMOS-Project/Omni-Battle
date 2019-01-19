@@ -6,7 +6,105 @@ import "../erc721x/contracts/Core/ERC721X/ERC721XTokenNFT.sol";
 import "../erc721x/contracts/Libraries/ObjectsLib.sol";
 import "../openzeppelin-solidity/contracts/AddressUtils.sol";
 
-contract AlienCreation is ERC721XTokenNFT {
+
+contract PlanetCreation is ERC721XTokenNFT {
+
+  uint PlanetTypes = 12;
+  uint PlanetCombos = 25 ** PlanetTypes;
+
+  event CreatePlanetEvents(uint planetId, uint tokenCount, uint capacity, uint level); ///#DEV Create alien event
+
+  struct Planet {  ///#DEV Planet properties
+    string name;
+    bytes32 ecosystemType;
+    uint tokenCount;
+    uint capacity;
+    uint level;
+    address owner;
+  }
+
+  Planet[] planet; ///#DEV Planet lookup array
+
+mapping(uint => Planet) public AssignPlanet; ///#DEV Assign planet to person called contract
+mapping(address => uint) public PlanetAlienCount; ///#DEV Alien count to planet
+mapping(uint => uint) public TokensToPlanet; ///#DEV Overall token count to planet
+
+  modifier PlanetCreateCheck() {  //#DEV Check 0 planets created
+    //require(TotalCount[msg.sender] >= 1);
+    require(PlanetAlienCount[msg.sender] == 0);
+    _;
+  }
+
+  function CreatePlanet(string _name,
+    bytes32 _ecosystemType, ///#DEV Create planet
+    uint _tokenCount,
+    uint _capacity,
+    uint _level,
+    address _owner)
+
+    private PlanetCreateCheck() {
+    uint id = planet.push(Planet(_name, _ecosystemType, 0, 100, 1, _owner)) - 1;
+    planet[id].owner = msg.sender;
+    AssignPlanet[id] = Planet(_name, _ecosystemType, 0, 100, 1, msg.sender);
+    TokensToPlanet[id] = planet[id].tokenCount;
+    emit CreatePlanetEvents(id, _tokenCount, _capacity, _level);
+  }
+
+  /*function UserCreatePlanet(
+  string _name,
+  uint _tokenCount,
+  uint _capacity,
+  uint _level,
+  address _owner
+  )
+  public PlanetCreateCheck {
+    PlanetCreateCheck(_name, _ecosystemType, tokenCount, _capacity, _level, _owner);
+
+  }*/
+
+  modifier planetOwnerCheck(uint _planetId) { ///#DEV Check that planet belongs to person calling contract
+    require(AssignPlanet[_planetId].owner == msg.sender);
+    _;
+  }
+
+/*function PlanetToUser(
+  bytes32 _name,
+  ) {
+
+}*/
+
+
+  function prepareEco(string _random) public pure returns (uint) {
+    uint randnumber = uint(keccak256(abi.encodePacked(_random)));  ///#DEV Return random number between 0 and 100
+    return randnumber % 100;
+  }
+
+  function chooseEcosystem(uint _planetId, string _random) private planetOwnerCheck(_planetId) {  ///#DEV Randomise planet ecosystem
+   uint number = prepareEco(_random);
+   if(number >= 0 && number < 10) {
+      planet[_planetId].ecosystemType = "Water";
+   }
+
+   else if(number >= 10 && number < 50) {
+     planet[_planetId].ecosystemType = "Barren";
+   }
+
+   else if(number >= 50 && number < 75) {
+    planet[_planetId].ecosystemType = "Desert";
+   }
+
+   else if(number >= 75 && number <= 100) {
+    planet[_planetId].ecosystemType = "Cold";
+   }
+
+   else {
+     revert("The number received was not within the required range.");  ///#DEV Abandon state change
+   }
+}
+}
+
+
+contract AlienCreation is PlanetCreation {
 
 
   uint AlienDna = 10;
@@ -83,47 +181,3 @@ contract AlienCreation is ERC721XTokenNFT {
         //AddWeaponry(_tokenId);
     //}
 }
-
-/*contract PlanetCreation is AlienCreation {
-
-  event CreatePlanetEvents(uint planetId, uint ecosystemType);
-
-  struct Planet {
-    uint planetId;
-    uint ecosystemType;
-  }
-
-  Planet[] planet;
-
-mapping(uint => uint) public TokensToPlanet;
-mapping(uint => address) public PlanetOwnerAddress;
-
-  modifier PlanetCreateCheck(uint _planetId) {
-    require(TotalCount[msg.sender] >= 1);
-    require(PlanetOwnerAddress[_planetId] == 0);
-    _;
-  }
-
-  modifier PlanetOwnerCheck(uint _planetId) {
-    require(PlanetOwnerAddress[_planetId] == msg.sender);
-    _;
-  }
-
-  function CreatePlanet(uint _planetId, uint _ecosystemType) internal PlanetCreateCheck(_planetId) {
-    uint id = planet.push(Planet(_planetId, _ecosystemType));
-    PlanetOwnerAddress[_planetId] = msg.sender;
-    emit CreatePlanetEvents(id, _ecosystemType);
-  }
-
- function AssignPlanet(address _sender, uint _planetId) internal PlanetOwnerCheck(_planetId) {
- require(_sender == msg.sender);
-
- //uint[] TokensOwned storage  = tokensOwned(_sender);
-
- for(uint i=0;i<AddressTokens.length;i++) {
-   TokensToPlanet[AddressTokens[i]] = _planetId;
- }
-
- }
-
-}*/
