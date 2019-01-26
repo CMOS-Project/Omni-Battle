@@ -1,10 +1,10 @@
 pragma solidity ^0.4.24;
 
 import "../erc721x/contracts/Interfaces/ERC721X.sol";
+//import "../erc721x/contracts/Core/Card.sol";
 import "../erc721x/contracts/Interfaces/ERC721XReceiver.sol";
 import "../erc721x/contracts/Core/ERC721X/ERC721XTokenNFT.sol";
 import "../erc721x/contracts/Libraries/ObjectsLib.sol";
-import "../openzeppelin-solidity/contracts/AddressUtils.sol";
 
 
 contract PlanetCreation is ERC721XTokenNFT {
@@ -12,11 +12,12 @@ contract PlanetCreation is ERC721XTokenNFT {
   uint PlanetTypes = 12;
   uint PlanetCombos = 25 ** PlanetTypes;
 
-  event CreatePlanetEvents(uint planetId, uint tokenCount, uint capacity, uint level); ///#DEV Create alien event
+  event CreatePlanetEvents(uint planetId, string name, bytes32 ecosystemType); ///#DEV Create alien event
 
   struct Planet {  ///#DEV Planet properties
     string name;
     bytes32 ecosystemType;
+    uint planetId;
     uint tokenCount;
     uint capacity;
     uint level;
@@ -26,28 +27,55 @@ contract PlanetCreation is ERC721XTokenNFT {
   Planet[] planet; ///#DEV Planet lookup array
 
 mapping(uint => Planet) public AssignPlanet; ///#DEV Assign planet to person called contract
-mapping(address => uint) public PlanetAlienCount; ///#DEV Alien count to planet
+mapping(address => uint) public PlanetCount; ///#DEV Planet count to address
 mapping(uint => uint) public TokensToPlanet; ///#DEV Overall token count to planet
 
   modifier PlanetCreateCheck() {  //#DEV Check 0 planets created
-    //require(TotalCount[msg.sender] >= 1);
-    require(PlanetAlienCount[msg.sender] == 0);
+    require(PlanetCount[msg.sender] == 0);
     _;
   }
 
-  function CreatePlanet(string _name,
-    bytes32 _ecosystemType, ///#DEV Create planet
-    uint _tokenCount,
-    uint _capacity,
-    uint _level,
-    address _owner)
+  function prepareEco(string _random) public pure returns (bytes32) {
+    uint number = uint(keccak256(abi.encodePacked(_random)));  ///#DEV Return random number between 0 and 100
+    bytes32 water = "Water";
+    bytes32 barren = "Barren";
+    bytes32 desert = "Desert";
+    bytes32 cold = "Cold";
 
-    private PlanetCreateCheck() {
-    uint id = planet.push(Planet(_name, _ecosystemType, 0, 100, 1, _owner)) - 1;
-    planet[id].owner = msg.sender;
-    AssignPlanet[id] = Planet(_name, _ecosystemType, 0, 100, 1, msg.sender);
+    if(number >= 0 && number < 10) {
+     return water;
+    }
+
+    else if(number >= 10 && number < 50) {
+      return barren;
+    }
+
+    else if(number >= 50 && number < 75) {
+     return desert;
+    }
+
+    else if(number >= 75 && number <= 100) {
+     return cold;
+    }
+  }
+
+  function preparePlanetId(string _random) public view returns (uint) {
+    uint randnumber = uint(keccak256(abi.encodePacked(_random)));
+    return randnumber % PlanetCombos;
+  }
+
+  function preparePlanet(string _name, bytes32 _ecosystemType, uint _planetId) public PlanetCreateCheck() {
+    uint id = planet.push(Planet(_name, _ecosystemType, _planetId, 0, 100, 1, msg.sender)) - 1;
+    AssignPlanet[id] = Planet(_name, _ecosystemType, _planetId, 0, 100, 1, msg.sender);
+
     TokensToPlanet[id] = planet[id].tokenCount;
-    emit CreatePlanetEvents(id, _tokenCount, _capacity, _level);
+    emit CreatePlanetEvents(id, _name, _ecosystemType);
+  }
+
+  function CreatePlanet(string _name) public PlanetCreateCheck() {
+    bytes32 eco = prepareEco(_name);
+    uint planetNum = preparePlanetId(_name);
+    preparePlanet(_name, eco, planetNum);
   }
 
   /*function UserCreatePlanet(
@@ -67,44 +95,45 @@ mapping(uint => uint) public TokensToPlanet; ///#DEV Overall token count to plan
     _;
   }
 
+  /*modifier planetCountCheck(uint _planetId) {
+    require();
+  }*/
+
 /*function PlanetToUser(
   bytes32 _name,
   ) {
 
 }*/
+}
 
+contract WeaponCreation is PlanetCreation {
 
-  function prepareEco(string _random) public pure returns (uint) {
-    uint randnumber = uint(keccak256(abi.encodePacked(_random)));  ///#DEV Return random number between 0 and 100
-    return randnumber % 100;
+  event WeaponCreate(uint weaponId);
+
+  uint16 weaponCombos = 2**12;
+
+  struct Weapon {
+    uint id;
+    uint attack;
   }
 
-  function chooseEcosystem(uint _planetId, string _random) private planetOwnerCheck(_planetId) {  ///#DEV Randomise planet ecosystem
-   uint number = prepareEco(_random);
-   if(number >= 0 && number < 10) {
-      planet[_planetId].ecosystemType = "Water";
-   }
+  Weapon[] weapon;
 
-   else if(number >= 10 && number < 50) {
-     planet[_planetId].ecosystemType = "Barren";
-   }
+  function randomiseId() view internal returns (uint) {
+    uint randomNumber = uint(keccak256(abi.encodePacked(msg.sender, block.number))); 
+    return randomNumber % weaponCombos;
+  }
 
-   else if(number >= 50 && number < 75) {
-    planet[_planetId].ecosystemType = "Desert";
-   }
+  function weaponMerge() internal {
+    uint random = randomiseId();
+    uint id = weapon.push(Weapon(random, 1)) - 1;
+    emit WeaponCreate(id);
+  }
 
-   else if(number >= 75 && number <= 100) {
-    planet[_planetId].ecosystemType = "Cold";
-   }
-
-   else {
-     revert("The number received was not within the required range.");  ///#DEV Abandon state change
-   }
-}
 }
 
 
-contract AlienCreation is PlanetCreation {
+contract AlienCreation is WeaponCreation {
 
 
   uint AlienDna = 10;
@@ -122,20 +151,24 @@ contract AlienCreation is PlanetCreation {
        return CardSymbol;
      }
 
-    event AlienStarter(address alienOwner, uint alienId, string name, uint attack, uint defence);  ///#DEV Event for frontend JavaScript
+    event AlienStarter(uint alienId, string name);  ///#DEV Event for JavaScript
 
     struct Alien { //#DEV Variable properties for Alien card type
         address alienOwner;
         string name;
+        bool weapon;
+        uint alienId;
         uint attack;
         uint defence;
+        uint8 cooldown;
     }
 
     Alien[] public alien;
 
     //mapping(uint => address) AlienAddress;  ///#DEV Mapping for Alien token ID to owner
     mapping(uint => Alien) AlienOwner;
-    mapping(address => uint) TotalCount;   ///#DEV Total alien card count to addresss
+    mapping(address => uint) TotalCount;   ///#DEV Total alien card count to address
+    mapping(uint => uint) WeaponMerge; ///#DEV Map weapon add on to alienId
 
      modifier StarterAirdrop() {
        require(TotalCount[msg.sender] == 0);  /// #DEV Check that alien type card count is 0
@@ -147,27 +180,34 @@ contract AlienCreation is PlanetCreation {
         _;
     }
 
+    modifier CheckWeaponMerge(uint _weaponId, uint _alienId) {
+        require(WeaponMerge[_weaponId] == _alienId);
+        _;
+    }
+
     ///#DEV Initial airdrop of game token on starting the game
-    function AirdropStartingAlien(address _alienOwner, string memory _name, uint _attack, uint _defence) private {
-        uint id = alien.push(Alien(_alienOwner, _name, 0, 0)) - 1;
-        alien[id].alienOwner = msg.sender;
-        AlienOwner[id] = Alien(_alienOwner, _name, 0, 0); ///#DEV Assigns id to person calling function - makes them owner
+    function AirdropStartingAlien(string memory _name, uint _alienId) public {
+        require(PlanetCount[msg.sender] >= 1, "This address must have at least 1 planet assigned to it"); ///#DEV Check 1 planet assigned
+        uint id = alien.push(Alien(msg.sender, _name, false, _alienId, 0, 0, uint8(now + 1 days))) - 1;
+        AlienOwner[id] = Alien(msg.sender, _name, false, _alienId, 0, 0, uint8(now + 1 days)); ///#DEV Assigns id to person calling function - makes them owner
         TotalCount[msg.sender]++; ///#DEV Alien count +1
-        emit AlienStarter(_alienOwner, id, _name, _attack, _defence); ///Trigger event
+        emit AlienStarter(id, _name); ///Trigger event
     }
 
     function GenerateRandomAlien(string memory _namestr) private view returns (uint) {
         uint RandomName = uint(keccak256(abi.encodePacked(_namestr))); ///Pseudo random 256bit string generated from keccak hash function
-        return RandomName % AlienCombos; ///#DEV Return any remainder (random number) from 10^25 (AlienCombos). RandomName possible combos = 2^256
+        return RandomName % AlienCombos; ///#DEV Return any remainder (random number) from 10^25 (AlienCombos) to be alion id
     }
 
-    function CreateAlien(address _alienOwner, string memory _name, uint _attack, uint _defence) public StarterAirdrop {
+    function CreateStarterAlien(string _name) public StarterAirdrop {
+       uint randomId = GenerateRandomAlien(_name);
        //uint AlienType = GenerateRandomAlien(_name); ///#DEV Call above function with name parameter to produce random no.
-       AirdropStartingAlien(_alienOwner, _name, _attack, _defence);
+       AirdropStartingAlien(_name, randomId);
     }
 
     function AddWeaponry(uint _alienId) public OnlyAlienOwner(_alienId) {
-        alien[_alienId].attack++; ///#DEV Add +1 attack point to token that person chooses to call function with
+        require(AlienOwner[_alienId].weapon == false);
+        AlienOwner[_alienId].attack++; ///#DEV Add +1 attack point to token that person chooses to call function with
     }
 
     ///#DEV 50/50 chance of receiving weapon add on
