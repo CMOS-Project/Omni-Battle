@@ -1,11 +1,12 @@
 pragma solidity ^0.4.24;
 
-import "./AlienSpawner.sol";
+contract OmniBattleOwnership  {
 
-/*contract weapon is AlienCreation {
-    /*function AddWeaponry(uint _attack, uint _bonus, uint _tokenId) external TokenOwner(_tokenId) {
-        //Alien storage alien = AlienAddress[_tokenId];
-        AlienAddress[_tokenId].attack;
-    }
-  }
-    */
+  //Permission to change contract ownership
+  /*function OnlyCEOCanCall() private {
+    require(msg.sender == 0x4D169c8dC03873931ab4147540e7dACFA86eEb84);
+  }*/
+
+  //Self-destruct function
+
+}
