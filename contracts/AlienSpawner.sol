@@ -1,10 +1,9 @@
 pragma solidity ^0.4.24;
 
 import "../erc721x/contracts/Interfaces/ERC721X.sol";
-//import "../erc721x/contracts/Core/Card.sol";
+//import "../erc721x/contracts/Core/ERC721X/ERC721XToken.sol";
 import "../erc721x/contracts/Interfaces/ERC721XReceiver.sol";
 import "../erc721x/contracts/Core/ERC721X/ERC721XTokenNFT.sol";
-import "../erc721x/contracts/Libraries/ObjectsLib.sol";
 
 
 contract PlanetCreation is ERC721XTokenNFT {
@@ -32,6 +31,11 @@ mapping(uint => uint) public TokensToPlanet; ///#DEV Overall token count to plan
 
   modifier PlanetCreateCheck() {  //#DEV Check 0 planets created
     require(PlanetCount[msg.sender] == 0);
+    _;
+  }
+
+  modifier PlanetExistCheck() {
+    require(PlanetCount[msg.sender] >= 1);
     _;
   }
 
@@ -110,7 +114,7 @@ contract WeaponCreation is PlanetCreation {
 
   event WeaponCreate(uint weaponId);
 
-  uint16 weaponCombos = 2**12;
+  uint32 weaponCombos = 2**16;
 
   struct Weapon {
     uint id;
@@ -119,15 +123,16 @@ contract WeaponCreation is PlanetCreation {
 
   Weapon[] weapon;
 
-  function randomiseId() view internal returns (uint) {
-    uint randomNumber = uint(keccak256(abi.encodePacked(msg.sender, block.number))); 
+  function randomiseId() view private returns (uint) {
+    uint randomNumber = uint(keccak256(abi.encodePacked(msg.sender, block.number)));
     return randomNumber % weaponCombos;
   }
 
-  function weaponMerge() internal {
+  function weaponMerge() public returns (uint) {
     uint random = randomiseId();
     uint id = weapon.push(Weapon(random, 1)) - 1;
     emit WeaponCreate(id);
+    return weapon[random].id;
   }
 
 }
@@ -158,8 +163,11 @@ contract AlienCreation is WeaponCreation {
         string name;
         bool weapon;
         uint alienId;
+        uint level;
         uint attack;
         uint defence;
+        uint wincount;
+        uint losscount;
         uint8 cooldown;
     }
 
@@ -186,10 +194,10 @@ contract AlienCreation is WeaponCreation {
     }
 
     ///#DEV Initial airdrop of game token on starting the game
-    function AirdropStartingAlien(string memory _name, uint _alienId) public {
+    function AirdropAlien(string memory _name, uint _alienId) public {
         require(PlanetCount[msg.sender] >= 1, "This address must have at least 1 planet assigned to it"); ///#DEV Check 1 planet assigned
-        uint id = alien.push(Alien(msg.sender, _name, false, _alienId, 0, 0, uint8(now + 1 days))) - 1;
-        AlienOwner[id] = Alien(msg.sender, _name, false, _alienId, 0, 0, uint8(now + 1 days)); ///#DEV Assigns id to person calling function - makes them owner
+        uint id = alien.push(Alien(msg.sender, _name, false, _alienId, 1, 0, 0, 0, 0, uint8(now + 1 days))) - 1;
+        AlienOwner[id] = Alien(msg.sender, _name, false, _alienId, 1, 0, 0, 0, 0, uint8(now + 1 days)); ///#DEV Assigns id to person calling function - makes them owner
         TotalCount[msg.sender]++; ///#DEV Alien count +1
         emit AlienStarter(id, _name); ///Trigger event
     }
@@ -202,12 +210,24 @@ contract AlienCreation is WeaponCreation {
     function CreateStarterAlien(string _name) public StarterAirdrop {
        uint randomId = GenerateRandomAlien(_name);
        //uint AlienType = GenerateRandomAlien(_name); ///#DEV Call above function with name parameter to produce random no.
-       AirdropStartingAlien(_name, randomId);
+       AirdropAlien(_name, randomId);
     }
 
     function AddWeaponry(uint _alienId) public OnlyAlienOwner(_alienId) {
         require(AlienOwner[_alienId].weapon == false);
+        uint weaponCreation = weaponMerge();
+        _mint(weaponCreation, msg.sender);
+        WeaponMerge[weaponCreation] = _alienId;
         AlienOwner[_alienId].attack++; ///#DEV Add +1 attack point to token that person chooses to call function with
+        AlienOwner[_alienId].weapon = true;
+    }
+
+    function BuyAlien(uint _alienId) public payable PlanetExistCheck {
+      require(msg.value >= 0.001 ether);
+      uint amount = msg.value / 0.001 ether;
+      for(uint i = 0; i < amount; i++) {
+      _mint(_alienId, msg.sender);
+    }
     }
 
     ///#DEV 50/50 chance of receiving weapon add on
