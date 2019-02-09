@@ -4,17 +4,11 @@ import "./AlienSpawner.sol";
 
 contract AlienStatistics is AlienCreation {
 
- function returnTotalAlienCount() view external returns (uint) {
-    uint total = alien.length;
-    return total;
- }
-
+///#DEV Planet Stats
 function returnTotalPlanetCount() view external returns (uint) {
   uint total = planet.length;
   return total;
 }
-
-uint[] counterType;
 
 function WaterCount() view external returns (uint) {
   uint water = 0;
@@ -26,6 +20,7 @@ function WaterCount() view external returns (uint) {
     }
    return water;
   }
+
 
   function BarrenCount() view external returns (uint) {
     uint barren = 0;
@@ -60,7 +55,26 @@ function WaterCount() view external returns (uint) {
          return cold;
         }
 
+///#DEV Alien Stats
+function returnTotalAlienCount() view external returns (uint) {
+   uint total = alien.length;
+   return total;
+}
 
+function WeaponPercentage() view external returns (uint) {
+  uint weaponCount = 0;
+  uint alienCount = alien.length;
+
+  for(uint i=0; i < alien.length; i++) {
+    if(alien[i].weapon == true) {
+      ratio++;
+    }
+  }
+
+  uint ratio = weaponCount / alienCount;
+
+  return ratio * 100;
+}
 
 
 }
