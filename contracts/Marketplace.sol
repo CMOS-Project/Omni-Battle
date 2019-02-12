@@ -5,8 +5,10 @@ import "./Upgrades.sol";
 
 contract Marketplace is Upgrade {
 
-  event listLeverage(uint startingBid, bool instabuyoption, bool leverage, uint alienId);
-  event listNonLeverage(uint startingBidN, bool instabuyoptionN, bool leverageN, uint alienIdN);
+  event ListItem(uint indexed startingBid, bool instabuyoption, bool leverage, uint indexed alienId, uint indexed AuctionId);
+  event BidItem(address indexed bidder, uint indexed currentBid, uint indexed AuctionId);
+  event AuctionEndLevTrue(address indexed NewOwner, uint indexed finalBid, uint leverage, uint indexed alienId);
+  event AuctionEndNonLev(address indexed NewOwner, uint indexed finalBid, uint indexed AlienId);
 
   struct Auction {
    address oldOwner;
@@ -41,22 +43,21 @@ function randomAuctionId() private view returns (uint) {
     require(_leverageSelector <= 5);
 
     uint8 _time = uint8(now + 30 days);
-    uint _auctionId = randomAuctionId();
+    uint auctionId = randomAuctionId();
 
     if(_leverage == true) {
       leverageInitiate[msg.sender] = _alienId;
-      alienToAuction[_auctionId] = leverageInitiate[msg.sender];
-      auction.push(Auction(msg.sender, _startingBid, _auctionId, 0, _time, true, true, _leverageSelector, false));
-      emit listLeverage(_startingBid, _instabuyoption, _leverage, _alienId);
+      alienToAuction[auctionId] = leverageInitiate[msg.sender];
+      auction.push(Auction(msg.sender, _startingBid, auctionId, 0, _time, true, true, _leverageSelector, false));
     }
 
     else {
       nonLeverageInitiate[msg.sender] = _alienId;
-      auction.push(Auction(msg.sender, _startingBid, _auctionId, 0, _time,  true, false, 0, false));
-      emit listNonLeverage(_startingBid, _instabuyoption, _leverage, _alienId);
+      auction.push(Auction(msg.sender, _startingBid, auctionId, 0, _time,  true, false, 0, false));
     }
 
-    alienToAuction[_alienId] = _auctionId;
+    alienToAuction[_alienId] = auctionId;
+    emit ListItem(_startingBid, _instabuyoption, _leverage, _alienId, auctionId);
   }
 
 
@@ -68,6 +69,7 @@ function randomAuctionId() private view returns (uint) {
     highestBidder[auction[_auctionId].oldOwner] = msg.sender;
     auction[_auctionId].value = msg.value;
     auction[_auctionId].bidCount++;
+    emit BidItem(highestBidder[auction[_auctionId].oldOwner], auction[_auctionId].value, _auctionId);
   }
 
   function leverageChances(uint _auctionId) view public returns (uint) {
@@ -109,22 +111,27 @@ function randomAuctionId() private view returns (uint) {
     require(now >= auction[_auctionId].time, "The auction must have ended");
 
     uint alienId = alienToAuction[_auctionId];
-    uint transferToBidder = auction[_auctionId].value * 1000000000000000000;
-    auction[_auctionId].oldOwner.transfer(transferToBidder);
+    uint transferEtherToBidder = auction[_auctionId].value * 1000000000000000000;
+    address originalOwner = auction[_auctionId].oldOwner;
+    address finalBidder = highestBidder[auction[_auctionId].oldOwner];
+    uint leverage = auction[_auctionId].leverageSelector;
+
+    originalOwner.transfer(transferEtherToBidder); //Transfer Ether = final bid value
 
     if(auction[_auctionId].leverage == true) {
        bool leverageRes = leverageResult(_auctionId);
 
        if(leverageRes == true) {
-        _mint(alienId, highestBidder[auction[_auctionId].oldOwner], auction[_auctionId].leverageSelector);
-        transferFrom(auction[_auctionId].oldOwner, highestBidder[auction[_auctionId].oldOwner], alienId, 1);
-        emit TransferWithQuantity(auction[_auctionId].oldOwner, highestBidder[auction[_auctionId].oldOwner], alienId, 1);
+        _mint(alienId, finalBidder, leverage);
+        transferFrom(originalOwner, finalBidder, alienId, 1);
+        emit TransferWithQuantity(originalOwner, finalBidder, alienId, 1);
+        emit AuctionEndLevTrue(finalBidder, auction[_auctionId].value, alienId, leverage);
         //emit transfer(auction[_auctionId].oldOwner, alien[_alienId]);
        }
 
        else if(leverageRes == false) {
-        transferFrom(auction[_auctionId].oldOwner, 0x0000000000000000000000000000000000000000, alienId, 1);
-        emit TransferWithQuantity(auction[_auctionId].oldOwner, 0x0000000000000000000000000000000000000000 , alienId, 1);
+        transferFrom(originalOwner, 0x0000000000000000000000000000000000000000, alienId, 1);
+        emit TransferWithQuantity(originalOwner, 0x0000000000000000000000000000000000000000 , alienId, 1);
        }
 
        else {
@@ -133,13 +140,15 @@ function randomAuctionId() private view returns (uint) {
     }
 
     else if(auction[_auctionId].leverage == false) {
-      transferFrom(auction[_auctionId].oldOwner, highestBidder[auction[_auctionId].oldOwner], alienId , 1);
-      emit TransferWithQuantity(auction[_auctionId].oldOwner, highestBidder[auction[_auctionId].oldOwner], alienId, 1);
+      transferFrom(originalOwner, finalBidder, alienId , 1);
+      emit TransferWithQuantity(originalOwner, finalBidder, alienId, 1);
+      emit AuctionEndNonLev(finalBidder, auction[_auctionId].value, alienId);
     }
 
     else {
       revert();
     }
+
   }
 
 
