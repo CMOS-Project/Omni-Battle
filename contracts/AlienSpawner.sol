@@ -1,12 +1,13 @@
 pragma solidity ^0.4.24;
 
 import "../erc721x/contracts/Interfaces/ERC721X.sol";
-//import "../erc721x/contracts/Core/ERC721X/ERC721XToken.sol";
+import "../erc721x/contracts/Core/ERC721X/ERC721XToken.sol";
 import "../erc721x/contracts/Interfaces/ERC721XReceiver.sol";
-import "../erc721x/contracts/Core/ERC721X/ERC721XTokenNFT.sol";
+import "../erc721x/contracts/Core/ERC721X/ERC721XToken.sol";
+import "./AlienOwnership.sol";
 
 
-contract PlanetCreation is ERC721XTokenNFT {
+contract PlanetCreation is ERC721XToken, OmniBattleOwnership {
 
   uint PlanetTypes = 12;
   uint PlanetCombos = 25 ** PlanetTypes;
@@ -29,7 +30,7 @@ mapping(uint => Planet) public AssignPlanet; ///#DEV Assign planet to person cal
 mapping(address => uint) public PlanetCount; ///#DEV Planet count to address
 mapping(uint => uint) public TokensToPlanet; ///#DEV Overall token count to planet
 
-  modifier PlanetCreateCheck() {  //#DEV Check 0 planets created
+  modifier PlanetInitialCreateCheck() {  //#DEV Check 0 planets created
     require(PlanetCount[msg.sender] == 0);
     _;
   }
@@ -68,15 +69,14 @@ mapping(uint => uint) public TokensToPlanet; ///#DEV Overall token count to plan
     return randnumber % PlanetCombos;
   }
 
-  function preparePlanet(string _name, bytes32 _ecosystemType, uint _planetId) public PlanetCreateCheck() {
+  function preparePlanet(string _name, bytes32 _ecosystemType, uint _planetId) public PlanetInitialCreateCheck() {
     uint id = planet.push(Planet(_name, _ecosystemType, _planetId, 0, 100, 1, msg.sender)) - 1;
     AssignPlanet[id] = Planet(_name, _ecosystemType, _planetId, 0, 100, 1, msg.sender);
-
     TokensToPlanet[id] = planet[id].tokenCount;
     emit CreatePlanetEvents(id, _name, _ecosystemType);
   }
 
-  function CreatePlanet(string _name) public PlanetCreateCheck() {
+  function createPlanet(string _name) public PlanetInitialCreateCheck() {
     bytes32 eco = prepareEco(_name);
     uint planetNum = preparePlanetId(_name);
     preparePlanet(_name, eco, planetNum);
@@ -89,8 +89,8 @@ mapping(uint => uint) public TokensToPlanet; ///#DEV Overall token count to plan
   uint _level,
   address _owner
   )
-  public PlanetCreateCheck {
-    PlanetCreateCheck(_name, _ecosystemType, tokenCount, _capacity, _level, _owner);
+  public PlanetInitialCreateCheck {
+    PlanetInitialCreateCheck(_name, _ecosystemType, tokenCount, _capacity, _level, _owner);
 
   }*/
 
@@ -177,6 +177,7 @@ contract AlienCreation is WeaponCreation {
     mapping(uint => Alien) AlienOwner;
     mapping(address => uint) TotalCount;   ///#DEV Total alien card count to address
     mapping(uint => uint) WeaponMerge; ///#DEV Map weapon add on to alienId
+    mapping(uint => uint) TokenToPlanet;
 
      modifier StarterAirdrop() {
        require(TotalCount[msg.sender] == 0);  /// #DEV Check that alien type card count is 0
@@ -184,7 +185,7 @@ contract AlienCreation is WeaponCreation {
     }
 
     modifier OnlyAlienOwner(uint _alienId) {
-        require(AlienOwner[_alienId].alienOwner == msg.sender);  ///#DEV Require to check that person calling function is owner of the card
+        require(alien[_alienId].alienOwner == msg.sender);  ///#DEV Require to check that person calling function is owner of the card
         _;
     }
 
@@ -214,20 +215,17 @@ contract AlienCreation is WeaponCreation {
     }
 
     function AddWeaponry(uint _alienId) public OnlyAlienOwner(_alienId) {
-        require(AlienOwner[_alienId].weapon == false);
+        require(alien[_alienId].weapon == false);
         uint weaponCreation = weaponMerge();
-        _mint(weaponCreation, msg.sender);
+        _mint(weaponCreation, msg.sender, 1);
         WeaponMerge[weaponCreation] = _alienId;
-        AlienOwner[_alienId].attack++; ///#DEV Add +1 attack point to token that person chooses to call function with
-        AlienOwner[_alienId].weapon = true;
+        alien[_alienId].attack++; ///#DEV Add +1 attack point to token that person chooses to call function with
+        alien[_alienId].weapon = true;
     }
 
-    function BuyAlien(uint _alienId) public payable PlanetExistCheck {
-      require(msg.value >= 0.001 ether);
-      uint amount = msg.value / 0.001 ether;
-      for(uint i = 0; i < amount; i++) {
-      _mint(_alienId, msg.sender);
-    }
+    function addToPlanet(uint _alienId, uint _planetId) public OnlyAlienOwner(_alienId) PlanetExistCheck {
+      require(TokenToPlanet[_alienId] == 0);
+      TokenToPlanet[_alienId] = _planetId;
     }
 
     ///#DEV 50/50 chance of receiving weapon add on
