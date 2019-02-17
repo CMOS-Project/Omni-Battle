@@ -1,8 +1,11 @@
 pragma solidity ^0.4.24;
 
 import "./AlienSpawner.sol";
+import "./Marketplace.sol";
+import "./PurchaseDirect.sol";
+import "./Upgrades.sol";
 
-contract AlienStatistics is AlienCreation {
+contract AlienStatistics is Marketplace  {
 
 ///#DEV Planet Stats
 function returnTotalPlanetCount() view external returns (uint) {
@@ -10,55 +13,63 @@ function returnTotalPlanetCount() view external returns (uint) {
   return total;
 }
 
-function WaterCount() view external returns (uint) {
-  uint water = 0;
+        function ecosystemTotals() view external returns (uint, uint, uint, uint) {
+          uint barren = 0;
+          uint cold = 0;
+          uint desert = 0;
+          uint water = 0;
 
-   for(uint i=0; i < planet.length; i++) {
-    if(keccak256(abi.encodePacked(planet[i].ecosystemType)) == keccak256(abi.encodePacked("Water"))) {
-      water++;
-    }
-    }
-   return water;
-  }
+          for(uint i=0; i < planet.length; i++) {
+           if(keccak256(abi.encodePacked(planet[i].ecosystemType)) == keccak256(abi.encodePacked("Barren"))) {
+           barren++;
+           }
 
+           else if(keccak256(abi.encodePacked(planet[i].ecosystemType)) == keccak256(abi.encodePacked("Cold"))) {
+           cold++;
+           }
 
-  function BarrenCount() view external returns (uint) {
-    uint barren = 0;
+           else if(keccak256(abi.encodePacked(planet[i].ecosystemType)) == keccak256(abi.encodePacked("Desert"))) {
+           desert++;
+           }
 
-     for(uint i=0; i < planet.length; i++) {
-      if(keccak256(abi.encodePacked(planet[i].ecosystemType)) == keccak256(abi.encodePacked("Barren"))) {
-        barren++;
-      }
-      }
-     return barren;
-    }
+           else if(keccak256(abi.encodePacked(planet[i].ecosystemType)) == keccak256(abi.encodePacked("Water"))) {
+           water++;
+           }
+           }
 
-    function DesertCount() view external returns (uint) {
-      uint desert = 0;
-
-       for(uint i=0; i < planet.length; i++) {
-        if(keccak256(abi.encodePacked(planet[i].ecosystemType)) == keccak256(abi.encodePacked("Desert"))) {
-          desert++;
-        }
-        }
-       return desert;
-      }
-
-      function ColdCount() view external returns (uint) {
-        uint cold = 0;
-
-         for(uint i=0; i < planet.length; i++) {
-          if(keccak256(abi.encodePacked(planet[i].ecosystemType)) == keccak256(abi.encodePacked("Cold"))) {
-          cold++;
-          }
-          }
-         return cold;
+           return (barren,
+             cold,
+             desert,
+             water);
         }
 
 ///#DEV Alien Stats
-function returnTotalAlienCount() view external returns (uint) {
+function TotalAlienCount() view external returns (uint) {
    uint total = alien.length;
    return total;
+}
+
+function TotalAuctionCount() view external returns (uint) {
+  uint total = auction.length;
+  return total;
+}
+
+function ActiveMarketplaceCount() view external returns (uint) {
+  uint counter = 0;
+
+  for(uint j = 0; j < auction.length;j++) {
+    if(auction[j].ended == false) {
+      counter++;
+    }
+  }
+
+  for(uint i = 0; i < instabuy.length;i++) {
+    if(instabuy[j].ended == false) {
+      counter++;
+    }
+  }
+
+  return counter;
 }
 
 function WeaponPercentage() view external returns (uint) {
