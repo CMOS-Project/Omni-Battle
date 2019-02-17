@@ -2,8 +2,16 @@ pragma solidity ^0.4.24;
 
 import "./AlienSpawner.sol";
 import "./Upgrades.sol";
+import "./Nebuli.sol";
+import "../erc721x/contracts/Interfaces/ERC20Interface.sol";
 
 contract Marketplace is Upgrade {
+
+  /*ERC20 private ERC20Implement;
+
+constructor(address erc20address) public {
+    ERC20Implement = ERC20(erc20address);
+  }*/
 
   ///#DEV Shared events
   event ListItem(uint indexed startingBid, bool instabuyoption, bool leverage, uint indexed alienId, uint indexed AuctionId);
@@ -49,7 +57,7 @@ contract Marketplace is Upgrade {
   mapping(address => uint) public BuyInstant;
 
 
-function randomAuctionId() private view returns (uint) {
+function randomAuctionId() public view returns (uint) {
   uint rand = uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, blockhash(block.number))));
   return rand;
 }
@@ -96,6 +104,20 @@ function randomAuctionId() private view returns (uint) {
     emit ListItem(_startingBid, _instabuyoption, _leverage, _alienId, auctionId);
   }
 
+  function ReturnBiddingOptions(uint _auctionId) view public returns (address, uint, bool, uint) {
+    address oldOwner = auction[_auctionId].oldOwner;
+    uint startingBid = auction[_auctionId].value;
+    bool leverage = auction[_auctionId].leverage;
+    uint leverageSelector = auction[_auctionId].leverageSelector;
+
+    return (
+      oldOwner,
+      startingBid,
+      leverage,
+      leverageSelector
+      );
+  }
+
 
   function PlaceBid(uint _auctionId, uint _alienId, uint _value) external {
     require(_value > auction[_auctionId].value, "Value of the new bid must be higher than the previous");
@@ -107,6 +129,16 @@ function randomAuctionId() private view returns (uint) {
     auction[_auctionId].value = _value;
     auction[_auctionId].bidCount++;
     emit BidItem(highestBidder[auction[_auctionId].oldOwner], auction[_auctionId].value, _auctionId);
+  }
+
+  function bidSpecs(uint _auctionId) view public returns (uint, uint, address) {
+    uint auctionId = _auctionId;
+    uint alienId = alienOnSale[_auctionId];
+    address currentHighestBidder = highestBidder[auction[_auctionId].oldOwner];
+
+    return (auctionId,
+    alienId,
+    currentHighestBidder);
   }
 
   function leverageChances(uint _auctionId) view public returns (uint) {
@@ -124,7 +156,6 @@ function randomAuctionId() private view returns (uint) {
     uint rand = uint(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % 100;
     return rand;
   }
-
 
 
   function leverageResult(uint _auctionId) view public returns (bool) {
@@ -160,6 +191,7 @@ function randomAuctionId() private view returns (uint) {
     uint leverage = auction[_auctionId].leverageSelector;
 
     originalOwner.transfer(transferEtherToBidder); //Transfer Ether = final bid value
+    //ERC20Implement.transfer(msg.sender, 100);
 
     if(auction[_auctionId].leverage == true) {
        bool leverageRes = leverageResult(_auctionId);
@@ -199,6 +231,7 @@ function InstantBuyEnded(uint _auctionId, uint _alienId, uint _time) external pa
   require(msg.value >= instabuy[_auctionId].buyValue);
   require(now <= _time);
   require(instabuy[_auctionId].ended == false);
+  require(highestBidder[instabuy[_auctionId].oldOwner] == msg.sender);
 
   BuyInstant[msg.sender] = _auctionId;
   highestBidder[instabuy[_auctionId].oldOwner] = msg.sender;
@@ -206,23 +239,5 @@ function InstantBuyEnded(uint _auctionId, uint _alienId, uint _time) external pa
   emit InstaBuyToken(msg.sender, instabuy[_auctionId].buyValue, _alienId);
 }
 
-
-  /*function SpecsLeverageBid(uint _alienId) external view returns (uint[3]) {  ///#DEV No way to return object in solidity yet
-    require(leverageInitiate[msg.sender] == alien[_alienId].alienId);
-    uint[3] memory check;
-    check[0] = alien[_alienId].alienId;
-    check[1] = alien[_alienId].attack;
-    check[2] = alien[_alienId].defence;
-    return check;
-  }
-
-  function SpecsNonLeverageBid(uint _alienId) external view returns (uint[3]) {  ///#DEV No way to return object in solidity yet
-    require(nonLeverageInitiate[msg.sender] == alien[_alienId].alienId);
-    uint[3] memory check;
-    check[0] = alien[_alienId].alienId;
-    check[1] = alien[_alienId].attack;
-    check[2] = alien[_alienId].defence;
-    return check;
-  }*/
 
 }
